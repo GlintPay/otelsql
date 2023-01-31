@@ -127,7 +127,7 @@ func (c *otConn) QueryContext(ctx context.Context, query string, args []driver.N
 
 	var span trace.Span
 	queryCtx := ctx
-	if !c.cfg.SpanOptions.OmitConnQuery {
+	if !c.cfg.SpanOptions.OmitConnQuery && query != "SELECT 1" {
 		queryCtx, span = createSpan(ctx, c.cfg, method, true, query, args)
 		defer span.End()
 	}

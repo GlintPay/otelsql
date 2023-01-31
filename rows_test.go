@@ -82,7 +82,7 @@ func TestOtRows_Close(t *testing.T) {
 			cfg := newMockConfig(t, tracer)
 
 			// New rows
-			rows := newRows(ctx, mr, cfg)
+			rows := newRows(ctx, mr, cfg, false)
 			// Close
 			err := rows.Close()
 
@@ -134,7 +134,7 @@ func TestOtRows_Next(t *testing.T) {
 			cfg.SpanOptions.RowsNext = tc.rowsNextOption
 
 			// New rows
-			rows := newRows(ctx, mr, cfg)
+			rows := newRows(ctx, mr, cfg, false)
 			// Next
 			err := rows.Next([]driver.Value{"test"})
 
@@ -201,7 +201,7 @@ func TestNewRows(t *testing.T) {
 					cfg.AttributesGetter = tc.attributesGetter
 
 					// New rows
-					rows := newRows(ctx, mr, cfg)
+					rows := newRows(ctx, mr, cfg, false)
 
 					spanList := sr.Started()
 					expectedSpanCount := getExpectedSpanCount(tc.noParentSpan, omitRows)

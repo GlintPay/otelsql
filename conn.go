@@ -125,9 +125,11 @@ func (c *otConn) QueryContext(ctx context.Context, query string, args []driver.N
 		onDefer(err)
 	}()
 
+	isPingQuery := query == "SELECT 1"
+
 	var span trace.Span
 	queryCtx := ctx
-	if !c.cfg.SpanOptions.OmitConnQuery && query != "SELECT 1" {
+	if !c.cfg.SpanOptions.OmitConnQuery && !isPingQuery {
 		queryCtx, span = createSpan(ctx, c.cfg, method, true, query, args)
 		defer span.End()
 	}
@@ -137,7 +139,7 @@ func (c *otConn) QueryContext(ctx context.Context, query string, args []driver.N
 		recordSpanError(span, c.cfg.SpanOptions, err)
 		return nil, err
 	}
-	return newRows(ctx, rows, c.cfg), nil
+	return newRows(ctx, rows, c.cfg, isPingQuery), nil
 }
 
 func (c *otConn) PrepareContext(ctx context.Context, query string) (stmt driver.Stmt, err error) {

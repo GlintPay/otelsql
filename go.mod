@@ -1,4 +1,6 @@
-module github.com/XSAM/otelsql
+module github.com/GlintPay/otelsql
+
+//module github.com/XSAM/otelsql
 
 go 1.18
 

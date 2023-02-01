@@ -39,13 +39,13 @@ type otRows struct {
 	onClose func(err error)
 }
 
-func newRows(ctx context.Context, rows driver.Rows, cfg config) *otRows {
+func newRows(ctx context.Context, rows driver.Rows, cfg config, isPingQuery bool) *otRows {
 	var span trace.Span
 
 	method := MethodRows
 	onClose := recordMetric(ctx, cfg.Instruments, cfg.Attributes, method)
 
-	if !cfg.SpanOptions.OmitRows {
+	if !cfg.SpanOptions.OmitRows && !isPingQuery {
 		_, span = createSpan(ctx, cfg, method, false, "", nil)
 	}
 

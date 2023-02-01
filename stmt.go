@@ -87,7 +87,7 @@ func (s *otStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (ro
 		recordSpanError(span, s.cfg.SpanOptions, err)
 		return nil, err
 	}
-	return newRows(ctx, rows, s.cfg), nil
+	return newRows(ctx, rows, s.cfg, false), nil
 }
 
 func (s *otStmt) CheckNamedValue(namedValue *driver.NamedValue) error {

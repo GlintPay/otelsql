@@ -18,7 +18,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
-	"github.com/XSAM/otelsql"
+	"github.com/GlintPay/otelsql"
 )
 
 func init() {

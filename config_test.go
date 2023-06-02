@@ -21,8 +21,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -34,8 +33,8 @@ func TestNewConfig(t *testing.T) {
 			instrumentationName,
 			trace.WithInstrumentationVersion(Version()),
 		),
-		MeterProvider: global.MeterProvider(),
-		Meter: global.MeterProvider().Meter(
+		MeterProvider: otel.GetMeterProvider(),
+		Meter: otel.GetMeterProvider().Meter(
 			instrumentationName,
 			metric.WithInstrumentationVersion(Version()),
 		),

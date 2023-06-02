@@ -17,13 +17,19 @@ package otelsql
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/metric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 	"go.opentelemetry.io/otel/trace"
 )
+
+func recordSpanErrorDeferred(span trace.Span, opts SpanOptions, err *error) {
+	recordSpanError(span, opts, *err)
+}
 
 func recordSpanError(span trace.Span, opts SpanOptions, err error) {
 	if span == nil {
@@ -65,7 +71,7 @@ func recordMetric(ctx context.Context, instruments *instruments, defaultAttribut
 		instruments.latency.Record(
 			ctx,
 			duration,
-			attributes...,
+			metric.WithAttributes(attributes...),
 		)
 	}
 }
@@ -83,4 +89,16 @@ func createSpan(ctx context.Context, cfg config, method Method, enableDBStatemen
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(attrs...),
 	)
+}
+
+// Copied from stdlib database/sql package: src/database/sql/ctxutil.go.
+func namedValueToValue(named []driver.NamedValue) ([]driver.Value, error) {
+	dargs := make([]driver.Value, len(named))
+	for n, param := range named {
+		if len(param.Name) > 0 {
+			return nil, errors.New("sql: driver does not support the use of Named Parameters")
+		}
+		dargs[n] = param.Value
+	}
+	return dargs, nil
 }

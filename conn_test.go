@@ -23,9 +23,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 	"go.opentelemetry.io/otel/trace"
 )
+
+type MockConn interface {
+	driver.Conn
+	PrepareContextCount() int
+	PrepareContextCtx() context.Context
+	PrepareContextQuery() string
+
+	BeginTxCtx() context.Context
+	BeginTxCount() int
+}
+
+var _ MockConn = (*mockConn)(nil)
+var _ driver.Conn = (*mockConn)(nil)
 
 type mockConn struct {
 	shouldError bool
@@ -52,6 +65,26 @@ type mockConn struct {
 	pingCtx   context.Context
 }
 
+func (m *mockConn) BeginTxCtx() context.Context {
+	return m.beginTxCtx
+}
+
+func (m *mockConn) BeginTxCount() int {
+	return m.beginTxCount
+}
+
+func (m *mockConn) PrepareContextCount() int {
+	return m.prepareContextCount
+}
+
+func (m *mockConn) PrepareContextCtx() context.Context {
+	return m.prepareContextCtx
+}
+
+func (m *mockConn) PrepareContextQuery() string {
+	return m.prepareContextQuery
+}
+
 func newMockConn(shouldError bool) *mockConn {
 	return &mockConn{shouldError: shouldError}
 }
@@ -65,7 +98,7 @@ func (m *mockConn) ResetSession(ctx context.Context) error {
 	return nil
 }
 
-func (m *mockConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+func (m *mockConn) BeginTx(ctx context.Context, _ driver.TxOptions) (driver.Tx, error) {
 	m.beginTxCount++
 	m.beginTxCtx = ctx
 	if m.shouldError {
@@ -84,7 +117,7 @@ func (m *mockConn) PrepareContext(ctx context.Context, query string) (driver.Stm
 	return newMockStmt(false), nil
 }
 
-func (m *mockConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+func (m *mockConn) QueryContext(ctx context.Context, query string, _ []driver.NamedValue) (driver.Rows, error) {
 	m.queryContextCount++
 	m.queryContextCtx = ctx
 	m.queryContextQuery = query
@@ -94,7 +127,7 @@ func (m *mockConn) QueryContext(ctx context.Context, query string, args []driver
 	return newMockRows(false), nil
 }
 
-func (m *mockConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+func (m *mockConn) ExecContext(ctx context.Context, query string, _ []driver.NamedValue) (driver.Result, error) {
 	m.execContextCount++
 	m.execContextCtx = ctx
 	m.execContextQuery = query
@@ -113,7 +146,7 @@ func (m *mockConn) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (m *mockConn) Prepare(query string) (driver.Stmt, error) {
+func (m *mockConn) Prepare(_ string) (driver.Stmt, error) {
 	return newMockStmt(false), nil
 }
 
@@ -406,90 +439,105 @@ func TestOtConn_PrepareContext(t *testing.T) {
 	query := "query"
 	expectedAttrs := []attribute.KeyValue{semconv.DBStatementKey.String(query)}
 
-	for _, omitConnPrepare := range []bool{true, false} {
+	for _, legacy := range []bool{true, false} {
 		var testname string
-		if omitConnPrepare {
-			testname = "OmitConnPrepare"
+		if legacy {
+			testname = "Legacy"
 		}
 
 		t.Run(testname, func(t *testing.T) {
-			testCases := []struct {
-				name             string
-				error            bool
-				noParentSpan     bool
-				disableQuery     bool
-				attrs            []attribute.KeyValue
-				attributesGetter AttributesGetter
-			}{
-				{
-					name:  "no error",
-					attrs: expectedAttrs,
-				},
-				{
-					name:         "no query db.statement",
-					disableQuery: true,
-				},
-				{
-					name:  "with error",
-					error: true,
-					attrs: expectedAttrs,
-				},
-				{
-					name:         "no parent span",
-					noParentSpan: true,
-					attrs:        expectedAttrs,
-				},
-				{
-					name:             "with attribute getter",
-					attributesGetter: getDummyAttributesGetter(),
-					attrs:            expectedAttrs,
-				},
-			}
+			for _, omitConnPrepare := range []bool{true, false} {
+				var testname string
+				if omitConnPrepare {
+					testname = "OmitConnPrepare"
+				}
 
-			for _, tc := range testCases {
-				t.Run(tc.name, func(t *testing.T) {
-					// Prepare traces
-					ctx, sr, tracer, dummySpan := prepareTraces(tc.noParentSpan)
-
-					// New conn
-					cfg := newMockConfig(t, tracer)
-					cfg.SpanOptions.DisableQuery = tc.disableQuery
-					cfg.SpanOptions.OmitConnPrepare = omitConnPrepare
-					cfg.AttributesGetter = tc.attributesGetter
-					mc := newMockConn(tc.error)
-					otelConn := newConn(mc, cfg)
-
-					stmt, err := otelConn.PrepareContext(ctx, query)
-					if tc.error {
-						require.Error(t, err)
-					} else {
-						require.NoError(t, err)
+				t.Run(testname, func(t *testing.T) {
+					testCases := []struct {
+						name             string
+						error            bool
+						noParentSpan     bool
+						disableQuery     bool
+						attrs            []attribute.KeyValue
+						attributesGetter AttributesGetter
+					}{
+						{
+							name:  "no error",
+							attrs: expectedAttrs,
+						},
+						{
+							name:         "no query db.statement",
+							disableQuery: true,
+						},
+						{
+							name:  "with error",
+							error: true,
+							attrs: expectedAttrs,
+						},
+						{
+							name:         "no parent span",
+							noParentSpan: true,
+							attrs:        expectedAttrs,
+						},
+						{
+							name:             "with attribute getter",
+							attributesGetter: getDummyAttributesGetter(),
+							attrs:            expectedAttrs,
+						},
 					}
 
-					spanList := sr.Ended()
-					expectedSpanCount := getExpectedSpanCount(tc.noParentSpan, omitConnPrepare)
-					// One dummy span and one span created in PrepareContext
-					require.Equal(t, expectedSpanCount, len(spanList))
+					for _, tc := range testCases {
+						t.Run(tc.name, func(t *testing.T) {
+							// Prepare traces
+							ctx, sr, tracer, dummySpan := prepareTraces(tc.noParentSpan)
 
-					assertSpanList(t, spanList, spanAssertionParameter{
-						parentSpan:         dummySpan,
-						error:              tc.error,
-						expectedAttributes: append(cfg.Attributes, tc.attrs...),
-						method:             MethodConnPrepare,
-						noParentSpan:       tc.noParentSpan,
-						ctx:                mc.prepareContextCtx,
-						omitSpan:           omitConnPrepare,
-						attributesGetter:   tc.attributesGetter,
-						query:              query,
-					})
+							// New conn
+							cfg := newMockConfig(t, tracer)
+							cfg.SpanOptions.DisableQuery = tc.disableQuery
+							cfg.SpanOptions.OmitConnPrepare = omitConnPrepare
+							cfg.AttributesGetter = tc.attributesGetter
 
-					assert.Equal(t, 1, mc.prepareContextCount)
-					assert.Equal(t, "query", mc.prepareContextQuery)
+							var mc MockConn
+							if legacy {
+								mc = newMockLegacyConn(tc.error)
+							} else {
+								mc = newMockConn(tc.error)
+							}
+							otelConn := newConn(mc, cfg)
 
-					if !tc.error {
-						otelStmt, ok := stmt.(*otStmt)
-						require.True(t, ok)
-						assert.Equal(t, "query", otelStmt.query)
+							stmt, err := otelConn.PrepareContext(ctx, query)
+							if tc.error {
+								require.Error(t, err)
+							} else {
+								require.NoError(t, err)
+							}
+
+							spanList := sr.Ended()
+							expectedSpanCount := getExpectedSpanCount(tc.noParentSpan, omitConnPrepare)
+							// One dummy span and one span created in PrepareContext
+							require.Equal(t, expectedSpanCount, len(spanList))
+
+							assertSpanList(t, spanList, spanAssertionParameter{
+								parentSpan:         dummySpan,
+								error:              tc.error,
+								expectedAttributes: append(cfg.Attributes, tc.attrs...),
+								method:             MethodConnPrepare,
+								noParentSpan:       tc.noParentSpan,
+								ctx:                mc.PrepareContextCtx(),
+								omitSpan:           omitConnPrepare,
+								attributesGetter:   tc.attributesGetter,
+								query:              query,
+							})
+
+							assert.Equal(t, 1, mc.PrepareContextCount())
+							assert.Equal(t, "query", mc.PrepareContextQuery())
+
+							if !tc.error {
+								otelStmt, ok := stmt.(*otStmt)
+								require.True(t, ok)
+								assert.Equal(t, "query", otelStmt.query)
+							}
+						})
 					}
 				})
 			}
@@ -521,48 +569,63 @@ func TestOtConn_BeginTx(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Prepare traces
-			ctx, sr, tracer, dummySpan := prepareTraces(tc.noParentSpan)
+	for _, legacy := range []bool{true, false} {
+		var testname string
+		if legacy {
+			testname = "Legacy"
+		}
 
-			// New conn
-			cfg := newMockConfig(t, tracer)
-			cfg.AttributesGetter = tc.attributesGetter
-			mc := newMockConn(tc.error)
-			otelConn := newConn(mc, cfg)
+		t.Run(testname, func(t *testing.T) {
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					// Prepare traces
+					ctx, sr, tracer, dummySpan := prepareTraces(tc.noParentSpan)
 
-			tx, err := otelConn.BeginTx(ctx, driver.TxOptions{})
-			if tc.error {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+					// New conn
+					cfg := newMockConfig(t, tracer)
+					cfg.AttributesGetter = tc.attributesGetter
 
-			spanList := sr.Ended()
-			expectedSpanCount := getExpectedSpanCount(tc.noParentSpan, false)
-			// One dummy span and one span created in BeginTx
-			require.Equal(t, expectedSpanCount, len(spanList))
+					var mc MockConn
+					if legacy {
+						mc = newMockLegacyConn(tc.error)
+					} else {
+						mc = newMockConn(tc.error)
+					}
+					otelConn := newConn(mc, cfg)
 
-			assertSpanList(t, spanList, spanAssertionParameter{
-				parentSpan:         dummySpan,
-				error:              tc.error,
-				expectedAttributes: cfg.Attributes,
-				method:             MethodConnBeginTx,
-				noParentSpan:       tc.noParentSpan,
-				ctx:                mc.beginTxCtx,
-				attributesGetter:   tc.attributesGetter,
-			})
+					tx, err := otelConn.BeginTx(ctx, driver.TxOptions{})
+					if tc.error {
+						require.Error(t, err)
+					} else {
+						require.NoError(t, err)
+					}
 
-			assert.Equal(t, 1, mc.beginTxCount)
+					spanList := sr.Ended()
+					expectedSpanCount := getExpectedSpanCount(tc.noParentSpan, false)
+					// One dummy span and one span created in BeginTx
+					require.Equal(t, expectedSpanCount, len(spanList))
 
-			if !tc.error {
-				otelTx, ok := tx.(*otTx)
-				require.True(t, ok)
+					assertSpanList(t, spanList, spanAssertionParameter{
+						parentSpan:         dummySpan,
+						error:              tc.error,
+						expectedAttributes: cfg.Attributes,
+						method:             MethodConnBeginTx,
+						noParentSpan:       tc.noParentSpan,
+						ctx:                mc.BeginTxCtx(),
+						attributesGetter:   tc.attributesGetter,
+					})
 
-				if dummySpan != nil {
-					assert.Equal(t, dummySpan.SpanContext(), trace.SpanContextFromContext(otelTx.ctx))
-				}
+					assert.Equal(t, 1, mc.BeginTxCount())
+
+					if !tc.error {
+						otelTx, ok := tx.(*otTx)
+						require.True(t, ok)
+
+						if dummySpan != nil {
+							assert.Equal(t, dummySpan.SpanContext(), trace.SpanContextFromContext(otelTx.ctx))
+						}
+					}
+				})
 			}
 		})
 	}

@@ -19,13 +19,13 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 var driverName string
@@ -151,8 +151,8 @@ func TestRegisterDBStatsMetrics(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Should collect 7 metrics
-	got := metricdata.ResourceMetrics{}
-	err = r.Collect(context.Background(), &got)
+	got := &metricdata.ResourceMetrics{}
+	err = r.Collect(context.Background(), got)
 	require.NoError(t, err)
 	assert.Len(t, got.ScopeMetrics, 1)
 	assert.Len(t, got.ScopeMetrics[0].Metrics, 7)

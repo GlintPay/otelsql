@@ -45,7 +45,7 @@ func newRows(ctx context.Context, rows driver.Rows, cfg config, isPingQuery bool
 	method := MethodRows
 	onClose := recordMetric(ctx, cfg.Instruments, cfg.Attributes, method)
 
-	if !cfg.SpanOptions.OmitRows && !isPingQuery {
+	if !cfg.SpanOptions.OmitRows && filterSpan(ctx, cfg.SpanOptions, method, "", nil) && !isPingQuery {
 		_, span = createSpan(ctx, cfg, method, false, "", nil)
 	}
 

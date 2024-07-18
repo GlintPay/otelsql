@@ -8,6 +8,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.32.0] - 2024-07-05
+
+### Changed
+
+- Upgrade OTel to version `v1.28.0/v0.50.0`. (#310)
+
+## [0.31.0] - 2024-05-02
+
+### Changed
+
+- Fallback the check of `driver.NamedValueChecker` to Conn in Stmt. (#243)
+  So, the `otelsql` can keep the original check order in `database/sql` for value checkers in the following order,
+  stopping at the first found match: `Stmt.NamedValueChecker`, `Conn.NamedValueChecker`.
+- Upgrade OTel to version `v1.26.0/v0.48.0`. (#244)
+
 ## [0.30.0] - 2024-04-15
 
 ### ⚠️ Notice ⚠️
@@ -336,7 +351,9 @@ It contains instrumentation for trace and depends on OTel `v0.18.0`.
 - Example code for a basic usage.
 - Apache-2.0 license.
 
-[Unreleased]: https://github.com/XSAM/otelsql/compare/v0.30.0...HEAD
+[Unreleased]: https://github.com/XSAM/otelsql/compare/v0.32.0...HEAD
+[0.32.0]: https://github.com/XSAM/otelsql/releases/tag/v0.32.0
+[0.31.0]: https://github.com/XSAM/otelsql/releases/tag/v0.31.0
 [0.30.0]: https://github.com/XSAM/otelsql/releases/tag/v0.30.0
 [0.29.0]: https://github.com/XSAM/otelsql/releases/tag/v0.29.0
 [0.28.0]: https://github.com/XSAM/otelsql/releases/tag/v0.28.0

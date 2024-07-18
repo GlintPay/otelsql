@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-version: "3.9"
 services:
   mysql:
-    image: mysql:8.3
+    image: mysql:8.4
     environment:
       - MYSQL_ROOT_PASSWORD=otel_password
       - MYSQL_DATABASE=db
@@ -26,7 +25,7 @@ services:
       retries: 10
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.91.0
+    image: otel/opentelemetry-collector-contrib:0.104.0
     command: ["--config=/etc/otel-collector.yaml"]
     volumes:
       - ./otel-collector.yaml:/etc/otel-collector.yaml
@@ -34,7 +33,7 @@ services:
       - jaeger
 
   prometheus:
-    image: prom/prometheus:v2.45.2
+    image: prom/prometheus:v2.53.0
     volumes:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yml
     ports:
@@ -43,7 +42,7 @@ services:
       - otel-collector
 
   jaeger:
-    image: jaegertracing/all-in-one:1.52
+    image: jaegertracing/all-in-one:1.59
     ports:
       - 16686:16686
 

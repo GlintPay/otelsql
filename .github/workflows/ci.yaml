@@ -8,108 +8,86 @@ env:
   # Path to where test results will be saved.
   TEST_RESULTS: /tmp/test-results
   # Default minimum version of Go to support.
-  DEFAULT_GO_VERSION: "1.22"
+  DEFAULT_GO_VERSION: "1.23"
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.DEFAULT_GO_VERSION }}
-    - name: Checkout Repo
-      uses: actions/checkout@v4
-    - name: Setup Environment
-      run: |
-        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-    - name: Module cache
-      uses: actions/cache@v4
-      env:
-        cache-name: go-mod-cache
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
-    - name: Tools cache
-      uses: actions/cache@v4
-      env:
-        cache-name: go-tools-cache
-      with:
-        path: ~/.tools
-        key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('./internal/tools/**') }}
-    - name: Run linters
-      run: make license-check lint
-    - name: Build
-      run: make build
-    - name: Check clean repository
-      run: make check-clean-work-tree
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5
+        with:
+          go-version: ${{ env.DEFAULT_GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: Tools cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        env:
+          cache-name: go-tools-cache
+        with:
+          path: .tools
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('./internal/tools/**') }}
+      - name: Run linters
+        run: make license-check lint
+      - name: Build
+        run: make build
+      - name: Check clean repository
+        run: make check-clean-work-tree
 
   test-race:
     runs-on: ubuntu-latest
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.DEFAULT_GO_VERSION }}
-    - name: Checkout Repo
-      uses: actions/checkout@v4
-    - name: Setup Environment
-      run: |
-        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-    - name: Module cache
-      uses: actions/cache@v4
-      env:
-        cache-name: go-mod-cache
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
-    - name: Run tests with race detector
-      run: make test-race
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5
+        with:
+          go-version: ${{ env.DEFAULT_GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: Tools cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        env:
+          cache-name: go-tools-cache
+        with:
+          path: .tools
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('./internal/tools/**') }}
+      - name: Run tests with race detector
+        run: make test-race
 
   test-coverage:
     runs-on: ubuntu-latest
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.DEFAULT_GO_VERSION }}
-    - name: Checkout Repo
-      uses: actions/checkout@v4
-    - name: Setup Environment
-      run: |
-        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-    - name: Module cache
-      uses: actions/cache@v4
-      env:
-        cache-name: go-mod-cache
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
-    - name: Run coverage tests
-      run: |
-        make test-coverage
-        mkdir $TEST_RESULTS
-        cp coverage.out $TEST_RESULTS
-        cp coverage.txt $TEST_RESULTS
-        cp coverage.html $TEST_RESULTS
-    - name: Upload coverage report
-      uses: codecov/codecov-action@v4.6.0
-      with:
-        file: ./coverage.txt
-        fail_ci_if_error: true
-        token: ${{ secrets.CODECOV_TOKEN }}
-    - name: Store coverage test output
-      uses: actions/upload-artifact@v4
-      with:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5
+        with:
+          go-version: ${{ env.DEFAULT_GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: Tools cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        env:
+          cache-name: go-tools-cache
+        with:
+          path: .tools
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('./internal/tools/**') }}
+      - name: Run coverage tests
+        run: |
+          make test-coverage
+          mkdir $TEST_RESULTS
+          cp coverage.out $TEST_RESULTS
+          cp coverage.txt $TEST_RESULTS
+          cp coverage.html $TEST_RESULTS
+      - name: Upload coverage report
+        uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574 # v5.4.0
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Store coverage test output
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
           name: opentelemetry-go-test-output
           path: ${{ env.TEST_RESULTS }}
 
   compatibility-test:
     strategy:
       matrix:
-        go-version: ["1.23", "1.22"]
+        go-version: ["1.24", "1.23"]
         os: [ubuntu-latest, macos-latest, windows-latest]
         # GitHub Actions does not support arm* architectures on default
         # runners. It is possible to acomplish this with a self-hosted runner
@@ -117,30 +95,24 @@ jobs:
         # https://docs.github.com/en/actions/hosting-your-own-runners/using-self-hosted-runners-in-a-workflow
         arch: ["386", amd64]
         exclude:
-        # Not a supported Go OS/architecture.
-        - os: macos-latest
-          arch: "386"
+          # Not a supported Go OS/architecture.
+          - os: macos-latest
+            arch: "386"
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Setup Environment
-      run: |
-        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-      shell: bash
-    - name: Module cache
-      uses: actions/cache@v4
-      env:
-        cache-name: go-mod-cache
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
-    - name: Run tests
-      env:
-        GOARCH: ${{ matrix.arch }}
-      run: make test-short
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: "**/go.sum"
+      - name: Tools cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        env:
+          cache-name: go-tools-cache
+        with:
+          path: .tools
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('./internal/tools/**') }}
+      - name: Run tests
+        env:
+          GOARCH: ${{ matrix.arch }}
+        run: make test-short

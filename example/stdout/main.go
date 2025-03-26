@@ -30,7 +30,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 
 	"github.com/XSAM/otelsql"
 )
@@ -86,9 +86,11 @@ func main() {
 	initTracer()
 	initMeter()
 
+	attrs := append(otelsql.AttributesFromDSN(mysqlDSN), semconv.DBSystemMySQL)
+
 	// Connect to database
 	db, err := otelsql.Open("mysql", mysqlDSN, otelsql.WithAttributes(
-		semconv.DBSystemMySQL,
+		attrs...,
 	))
 	if err != nil {
 		panic(err)
@@ -96,7 +98,7 @@ func main() {
 	defer db.Close()
 
 	err = otelsql.RegisterDBStatsMetrics(db, otelsql.WithAttributes(
-		semconv.DBSystemMySQL,
+		attrs...,
 	))
 	if err != nil {
 		panic(err)

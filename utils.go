@@ -22,7 +22,7 @@ import (
 
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -70,7 +70,15 @@ func recordMetric(
 			attributes = append(attributes, cfg.InstrumentAttributesGetter(ctx, method, query, args)...)
 		}
 		if err != nil {
-			attributes = append(attributes, queryStatusKey.String("error"))
+			if cfg.InstrumentErrorAttributesGetter != nil {
+				attributes = append(attributes, cfg.InstrumentErrorAttributesGetter(err)...)
+			}
+
+			if cfg.DisableSkipErrMeasurement && err == driver.ErrSkip {
+				attributes = append(attributes, queryStatusKey.String("ok"))
+			} else {
+				attributes = append(attributes, queryStatusKey.String("error"))
+			}
 		} else {
 			attributes = append(attributes, queryStatusKey.String("ok"))
 		}

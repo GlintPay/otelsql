@@ -43,7 +43,7 @@ func WithTracerProvider(provider trace.TracerProvider) Option {
 	})
 }
 
-// WithAttributes specifies attributes that will be set to each span.
+// WithAttributes specifies attributes that will be set to each span and measurement.
 func WithAttributes(attributes ...attribute.KeyValue) Option {
 	return OptionFunc(func(cfg *config) {
 		cfg.Attributes = attributes
@@ -106,5 +106,20 @@ func WithAttributesGetter(attributesGetter AttributesGetter) Option {
 func WithInstrumentAttributesGetter(instrumentAttributesGetter InstrumentAttributesGetter) Option {
 	return OptionFunc(func(cfg *config) {
 		cfg.InstrumentAttributesGetter = instrumentAttributesGetter
+	})
+}
+
+// WittDisableSkipErrMeasurement, if set to true, will suppress driver.ErrSkip as an error status in measurements.
+// The measurement will be recorded as status=ok.
+func WithDisableSkipErrMeasurement(disable bool) Option {
+	return OptionFunc(func(cfg *config) {
+		cfg.DisableSkipErrMeasurement = disable
+	})
+}
+
+// WithInstrumentErrorAttributesGetter takes InstrumentErrorAttributesGetter that will be called every time metric is recorded to instruments.
+func WithInstrumentErrorAttributesGetter(instrumentErrorAttributesGetter InstrumentErrorAttributesGetter) Option {
+	return OptionFunc(func(cfg *config) {
+		cfg.InstrumentErrorAttributesGetter = instrumentErrorAttributesGetter
 	})
 }

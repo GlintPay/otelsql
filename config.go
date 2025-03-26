@@ -43,6 +43,9 @@ type AttributesGetter func(ctx context.Context, method Method, query string, arg
 // InstrumentAttributesGetter provides additional attributes while recording metrics to instruments.
 type InstrumentAttributesGetter func(ctx context.Context, method Method, query string, args []driver.NamedValue) []attribute.KeyValue
 
+// InstrumentErrorAttributesGetter provides additional error-related attributes while recording metrics to instruments.
+type InstrumentErrorAttributesGetter func(err error) []attribute.KeyValue
+
 type SpanFilter func(ctx context.Context, method Method, query string, args []driver.NamedValue) bool
 
 type config struct {
@@ -56,7 +59,7 @@ type config struct {
 
 	SpanOptions SpanOptions
 
-	// Attributes will be set to each span.
+	// Attributes will be set to each span and measurement.
 	Attributes []attribute.KeyValue
 
 	// SpanNameFormatter will be called to produce span's name.
@@ -80,6 +83,13 @@ type config struct {
 	// InstrumentAttributesGetter will be called to produce additional attributes while recording metrics to instruments.
 	// Default returns nil
 	InstrumentAttributesGetter InstrumentAttributesGetter
+
+	InstrumentErrorAttributesGetter InstrumentErrorAttributesGetter
+
+	// DisableSkipErrMeasurement, if set to true, will suppress driver.ErrSkip as an error status in measurements.
+	// The measurement will be recorded as status=ok.
+	// Default is false
+	DisableSkipErrMeasurement bool
 }
 
 // SpanOptions holds configuration of tracing span to decide

@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -256,4 +257,128 @@ var omit SpanFilter = func(_ context.Context, _ Method, _ string, _ []driver.Nam
 // keep is a dummy SpanFilter function which specifies to keep the span.
 var keep SpanFilter = func(_ context.Context, _ Method, _ string, _ []driver.NamedValue) bool {
 	return true
+}
+
+func TestRecordMetric(t *testing.T) {
+	methodAttr := attribute.String("method", string(MethodConnQuery))
+	testAttr := attribute.String("dummyKey", "dummyVal")
+	testErrorAttr := attribute.String("errorKey", "errorVal")
+
+	dummyAttributesGetter := func(_ context.Context, _ Method, _ string, _ []driver.NamedValue) []attribute.KeyValue {
+		return []attribute.KeyValue{testAttr}
+	}
+
+	dummyErrorAttributesGetter := func(_ error) []attribute.KeyValue {
+		return []attribute.KeyValue{testErrorAttr}
+	}
+
+	type args struct {
+		ctx    context.Context
+		cfg    config
+		method Method
+		query  string
+		args   []driver.NamedValue
+	}
+	tests := []struct {
+		name          string
+		args          args
+		recordErr     error
+		expectedAttrs attribute.Set
+	}{
+		{
+			name: "metric with no error",
+			args: args{
+				cfg:    newConfig(),
+				method: MethodConnQuery,
+				query:  "example query",
+			},
+			recordErr:     nil,
+			expectedAttrs: attribute.NewSet(methodAttr, statusAttr("ok")),
+		},
+		{
+			name: "metric with an error",
+			args: args{
+				cfg:    newConfig(),
+				method: MethodConnQuery,
+				query:  "example query",
+			},
+			recordErr:     assert.AnError,
+			expectedAttrs: attribute.NewSet(methodAttr, statusAttr("error")),
+		},
+		{
+			name: "metric with skip error but not disabled",
+			args: args{
+				cfg:    newConfig(),
+				method: MethodConnQuery,
+				query:  "example query",
+			},
+			recordErr:     driver.ErrSkip,
+			expectedAttrs: attribute.NewSet(methodAttr, statusAttr("error")),
+		},
+		{
+			name: "metric with skip error but disabled",
+			args: args{
+				cfg:    newConfig(WithDisableSkipErrMeasurement(true)),
+				method: MethodConnQuery,
+				query:  "example query",
+			},
+			recordErr:     driver.ErrSkip,
+			expectedAttrs: attribute.NewSet(methodAttr, statusAttr("ok")),
+		},
+		{
+			name: "metric with instrumentAttributesGetter",
+			args: args{
+				cfg:    newConfig(WithInstrumentAttributesGetter(dummyAttributesGetter)),
+				method: MethodConnQuery,
+				query:  "example query",
+			},
+			recordErr:     nil,
+			expectedAttrs: attribute.NewSet(testAttr, methodAttr, statusAttr("ok")),
+		},
+		{
+			name: "metric with instrumentErrorAttributesGetter",
+			args: args{
+				cfg:    newConfig(WithInstrumentErrorAttributesGetter(dummyErrorAttributesGetter)),
+				method: MethodConnQuery,
+				query:  "example query",
+			},
+			recordErr:     assert.AnError,
+			expectedAttrs: attribute.NewSet(testErrorAttr, methodAttr, statusAttr("error")),
+		},
+		{
+			name: "metric with instrumentErrorAttributesGetter and no error",
+			args: args{
+				cfg:    newConfig(WithInstrumentErrorAttributesGetter(dummyErrorAttributesGetter)),
+				method: MethodConnQuery,
+				query:  "example query",
+			},
+			recordErr:     nil,
+			expectedAttrs: attribute.NewSet(methodAttr, statusAttr("ok")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockLatency := &float64HistogramMock{}
+			mockInstruments := &instruments{
+				latency: mockLatency,
+			}
+			recordFunc := recordMetric(tt.args.ctx, mockInstruments, tt.args.cfg, tt.args.method, tt.args.query, tt.args.args)
+			recordFunc(tt.recordErr)
+			assert.Equal(t, tt.expectedAttrs, mockLatency.attrs)
+		})
+	}
+}
+
+type float64HistogramMock struct {
+	// Add metric.Float64Histogram so we only need to implement the function we care about for the mock
+	metric.Float64Histogram
+	attrs attribute.Set
+}
+
+func (m *float64HistogramMock) Record(_ context.Context, _ float64, opts ...metric.RecordOption) {
+	m.attrs = metric.NewRecordConfig(opts).Attributes()
+}
+
+func statusAttr(status string) attribute.KeyValue {
+	return attribute.String("status", status)
 }

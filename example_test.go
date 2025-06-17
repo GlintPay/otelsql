@@ -18,7 +18,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 
 	"github.com/GlintPay/otelsql"
 )
@@ -28,9 +28,8 @@ func init() {
 }
 
 var (
-	connector = driver.Connector(nil)
-	dri       = otelsql.NewMockDriver()
-	mysqlDSN  = "root:otel_password@db"
+	dri      = otelsql.NewMockDriver()
+	mysqlDSN = "root:otel_password@db"
 )
 
 func ExampleOpen() {
@@ -39,27 +38,41 @@ func ExampleOpen() {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	// Output:
 }
 
 func ExampleOpenDB() {
+	driverContext, ok := dri.(driver.DriverContext)
+	if !ok {
+		panic("driver does not implement driver.DriverContext")
+	}
+	connector, err := driverContext.OpenConnector(mysqlDSN)
+	if err != nil {
+		panic(err)
+	}
+
 	// Connect to database
 	db := otelsql.OpenDB(connector)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
+	// Output:
 }
 
 func ExampleWrapDriver() {
 	otDriver := otelsql.WrapDriver(dri)
 
-	connector, err := otDriver.(driver.DriverContext).OpenConnector(mysqlDSN)
+	driverContext, ok := otDriver.(driver.DriverContext)
+	if !ok {
+		panic("driver does not implement driver.DriverContext")
+	}
+	connector, err := driverContext.OpenConnector(mysqlDSN)
 	if err != nil {
 		panic(err)
 	}
 
 	// Connect to database
 	db := sql.OpenDB(connector)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	// Output:
 }
 
@@ -75,12 +88,12 @@ func ExampleRegister() {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	// Output:
 }
 
 func ExampleAttributesFromDSN() {
-	attrs := append(otelsql.AttributesFromDSN(mysqlDSN), semconv.DBSystemMySQL)
+	attrs := append(otelsql.AttributesFromDSN(mysqlDSN), semconv.DBSystemNameMySQL)
 
 	// Connect to database
 	db, err := otelsql.Open("mysql", mysqlDSN, otelsql.WithAttributes(
@@ -89,7 +102,7 @@ func ExampleAttributesFromDSN() {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Register DB stats to meter
 	err = otelsql.RegisterDBStatsMetrics(db, otelsql.WithAttributes(

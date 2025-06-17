@@ -26,7 +26,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 
-	internalsemconv "github.com/XSAM/otelsql/internal/semconv"
+	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 )
 
 // estimatedAttributesOfGettersCount is the estimated number of attributes from getter methods.

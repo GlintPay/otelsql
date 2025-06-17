@@ -23,7 +23,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	internalsemconv "github.com/XSAM/otelsql/internal/semconv"
+	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 )
 
 const (

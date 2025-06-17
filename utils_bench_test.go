@@ -19,7 +19,7 @@ import (
 	"database/sql/driver"
 	"testing"
 
-	internalsemconv "github.com/XSAM/otelsql/internal/semconv"
+	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 	"go.opentelemetry.io/otel/attribute"
 )
 

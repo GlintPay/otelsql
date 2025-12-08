@@ -19,9 +19,10 @@ import (
 	"database/sql/driver"
 	"testing"
 
-	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
+	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 )
 
 var (

@@ -24,8 +24,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"go.opentelemetry.io/otel/trace"
-
-	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 )
 
 func TestNewConfig(t *testing.T) {

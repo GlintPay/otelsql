@@ -34,8 +34,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
-
-	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 )
 
 func TestRecordSpanError(t *testing.T) {

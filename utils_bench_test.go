@@ -21,8 +21,6 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-
-	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 )
 
 var (

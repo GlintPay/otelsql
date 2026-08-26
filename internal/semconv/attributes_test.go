@@ -23,7 +23,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otelsemconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 
-	"github.com/XSAM/otelsql/internal/semconv"
+	internalsemconv "github.com/GlintPay/otelsql/internal/semconv"
 )
 
 func TestDBQueryTextAttributes(t *testing.T) {
@@ -50,7 +50,7 @@ func TestDBQueryTextAttributes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := semconv.DBQueryTextAttributes(tt.query)
+			result := internalsemconv.DBQueryTextAttributes(tt.query)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -102,7 +102,7 @@ func TestErrorTypeAttribute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := semconv.ErrorTypeAttribute(tt.err)
+			result := internalsemconv.ErrorTypeAttribute(tt.err)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
